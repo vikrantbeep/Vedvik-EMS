@@ -1,0 +1,164 @@
+name: Weekly EMS Backup
+
+on:
+  schedule:
+    # Every Sunday at 12:30 UTC = 6:00 PM IST
+    - cron: '30 12 * * 0'
+  workflow_dispatch: # Allow manual trigger anytime
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Generate Excel backups and email
+        run: |
+          pip install requests openpyxl --quiet
+
+          python3 << 'PYEOF'
+          import requests, json, smtplib, os
+          from openpyxl import Workbook
+          from openpyxl.styles import Font, PatternFill, Alignment
+          from email.mime.multipart import MIMEMultipart
+          from email.mime.base import MIMEBase
+          from email.mime.text import MIMEText
+          from email import encoders
+          from datetime import datetime
+
+          SUPA_URL = "${{ secrets.SUPABASE_URL }}"
+          SUPA_KEY = "${{ secrets.SUPABASE_KEY }}"
+          GMAIL_USER = "${{ secrets.GMAIL_USER }}"
+          GMAIL_PASS = "${{ secrets.GMAIL_APP_PASSWORD }}"
+          TO_EMAIL = "${{ secrets.TO_EMAIL }}"
+
+          headers = {
+              "apikey": SUPA_KEY,
+              "Authorization": f"Bearer {SUPA_KEY}",
+              "Content-Type": "application/json"
+          }
+
+          # ── FETCH DATA ──────────────────────────────────
+          enq_res = requests.get(f"{SUPA_URL}/rest/v1/enquiries?select=*&order=created_at.desc", headers=headers)
+          con_res = requests.get(f"{SUPA_URL}/rest/v1/contacts?select=*&order=company_name.asc", headers=headers)
+          int_res = requests.get(f"{SUPA_URL}/rest/v1/interactions?select=*&order=created_at.desc", headers=headers)
+          notes_res = requests.get(f"{SUPA_URL}/rest/v1/notes?select=*&order=created_at.desc", headers=headers)
+
+          enquiries = enq_res.json() if enq_res.ok else []
+          contacts = con_res.json() if con_res.ok else []
+          interactions = int_res.json() if int_res.ok else []
+          notes = notes_res.json() if notes_res.ok else []
+
+          now = datetime.now().strftime("%d %b %Y")
+
+          BRAND = "020062"
+          HEADER_FILL = PatternFill("solid", fgColor=BRAND)
+          HEADER_FONT = Font(bold=True, color="FFFFFF", name="Calibri", size=10)
+          DATA_FONT = Font(name="Calibri", size=10)
+
+          def style_sheet(ws, headers):
+              for col, h in enumerate(headers, 1):
+                  cell = ws.cell(row=1, column=col, value=h)
+                  cell.fill = HEADER_FILL
+                  cell.font = HEADER_FONT
+                  cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+                  ws.row_dimensions[1].height = 30
+
+          def autofit(ws):
+              for col in ws.columns:
+                  max_len = max((len(str(c.value or '')) for c in col), default=10)
+                  ws.column_dimensions[col[0].column_letter].width = min(max_len + 4, 40)
+
+          def write_data(ws, rows, fields):
+              for r, row in enumerate(rows, 2):
+                  for c, f in enumerate(fields, 1):
+                      val = row.get(f, '')
+                      if isinstance(val, str) and (val.endswith('Z') or 'T' in val):
+                          try:
+                              val = datetime.fromisoformat(val.replace('Z','+00:00')).strftime('%d %b %Y %H:%M')
+                          except: pass
+                      cell = ws.cell(row=r, column=c, value=val)
+                      cell.font = DATA_FONT
+
+          # ── WORKBOOK 1: PIPELINE ────────────────────────
+          wb1 = Workbook()
+
+          # Sheet 1: Enquiries
+          ws1 = wb1.active
+          ws1.title = "Enquiries"
+          enq_headers = ["ID","Company","Contact","Phone","Email","City","State","Product","Source","Stage","Assignee","Follow-up Date","Quotation Sent","Active","Created At"]
+          enq_fields  = ["id","company","contact","phone","email","city","state","product","source","stage","assignee","followup","quote_sent","active","created_at"]
+          style_sheet(ws1, enq_headers)
+          write_data(ws1, enquiries, enq_fields)
+          autofit(ws1)
+
+          # Sheet 2: Interactions
+          ws2 = wb1.create_sheet("Interactions")
+          int_headers = ["ID","Enquiry ID","Type","Summary","Created At"]
+          int_fields  = ["id","enquiry_id","type","summary","created_at"]
+          style_sheet(ws2, int_headers)
+          write_data(ws2, interactions, int_fields)
+          autofit(ws2)
+
+          # Sheet 3: Notes
+          ws3 = wb1.create_sheet("Notes")
+          note_headers = ["ID","Enquiry ID","Content","Created At"]
+          note_fields  = ["id","enquiry_id","content","created_at"]
+          style_sheet(ws3, note_headers)
+          write_data(ws3, notes, note_fields)
+          autofit(ws3)
+
+          pipeline_file = f"vedvik_pipeline_{datetime.now().strftime('%Y%m%d')}.xlsx"
+          wb1.save(pipeline_file)
+
+          # ── WORKBOOK 2: CONTACTS ─────────────────────────
+          wb2 = Workbook()
+          ws4 = wb2.active
+          ws4.title = "Contacts"
+          con_headers = ["ID","Company Name","Contact Person","Phone","Email","City","State","Industry","Source","Products Interested","Notes","Created At"]
+          con_fields  = ["id","company_name","contact_person","phone","email","city","state","industry","source","products_interested","notes","created_at"]
+          style_sheet(ws4, con_headers)
+          write_data(ws4, contacts, con_fields)
+          autofit(ws4)
+
+          contacts_file = f"vedvik_contacts_{datetime.now().strftime('%Y%m%d')}.xlsx"
+          wb2.save(contacts_file)
+
+          # ── SEND EMAIL ────────────────────────────────────
+          msg = MIMEMultipart()
+          msg['From'] = GMAIL_USER
+          msg['To'] = TO_EMAIL
+          msg['Subject'] = f"Vedvik EMS Weekly Backup — {now}"
+
+          body = f"""Hello,
+
+          Please find attached your weekly Vedvik Machinery EMS data backup for {now}.
+
+          Files attached:
+          • {pipeline_file} — All enquiries, interactions & notes
+          • {contacts_file} — Full contacts database
+
+          Summary:
+          • Total Enquiries: {len(enquiries)}
+          • Total Contacts: {len(contacts)}
+          • Total Interactions: {len(interactions)}
+
+          This is an automated backup sent every Sunday at 6:00 PM IST.
+
+          — Vedvik EMS Backup System
+          """
+          msg.attach(MIMEText(body, 'plain'))
+
+          for fname in [pipeline_file, contacts_file]:
+              with open(fname, 'rb') as f:
+                  part = MIMEBase('application', 'octet-stream')
+                  part.set_payload(f.read())
+                  encoders.encode_base64(part)
+                  part.add_header('Content-Disposition', f'attachment; filename="{fname}"')
+                  msg.attach(part)
+
+          with smtplib.SMTP_SSL('smtp.gmail.com', 465) as server:
+              server.login(GMAIL_USER, GMAIL_PASS)
+              server.sendmail(GMAIL_USER, TO_EMAIL, msg.as_string())
+
+          print(f"✓ Backup sent: {pipeline_file} + {contacts_file}")
+          print(f"  Enquiries: {len(enquiries)}, Contacts: {len(contacts)}")
+          PYEOF
