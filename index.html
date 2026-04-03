@@ -108,8 +108,8 @@ h1,h2,h3,h4{font-family:'Manrope',sans-serif}
 .stat-card.amber .stat-icon{background:var(--amber-bg);color:var(--amber)}
 
 /* ── KANBAN ── */
-.kanban-board{display:grid;grid-template-columns:repeat(5,minmax(230px,1fr));gap:12px;overflow-x:auto;padding-bottom:12px}
-.kanban-col{background:#f0f1f5;border-radius:14px;padding:12px;min-height:520px;transition:background .15s;display:flex;flex-direction:column;min-width:230px}
+.kanban-board{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;padding-bottom:12px}
+.kanban-col{background:#f0f1f5;border-radius:12px;padding:10px;min-height:520px;transition:background .15s;display:flex;flex-direction:column}
 .kanban-col.drag-over{background:#dde0ff}
 .col-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;padding:0 4px}
 .col-dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:6px;flex-shrink:0}
@@ -433,12 +433,12 @@ h1,h2,h3,h4{font-family:'Manrope',sans-serif}
     <div class="modal-body">
       <div class="form-section">Contact Details</div>
       <div class="form-row">
-        <div><label class="form-lbl">Contact Name *</label><input class="form-input" id="f-name" type="text" placeholder="e.g. Rajesh Kumar"/></div>
-        <div><label class="form-lbl">Company Name *</label><input class="form-input" id="f-company" type="text" placeholder="e.g. ABC Industries"/></div>
+        <div><label class="form-lbl">Contact Name *</label><input class="form-input" id="f-name" type="text" placeholder="Mr. ABC"/></div>
+        <div><label class="form-lbl">Company Name *</label><input class="form-input" id="f-company" type="text" placeholder="ABC Company"/></div>
       </div>
       <div class="form-row">
         <div><label class="form-lbl">Phone</label><input class="form-input" id="f-phone" type="tel" placeholder="+91 98765 43210"/></div>
-        <div><label class="form-lbl">Email</label><input class="form-input" id="f-email" type="email" placeholder="rajesh@abc.com"/></div>
+        <div><label class="form-lbl">Email</label><input class="form-input" id="f-email" type="email" placeholder="abc@abc.com"/></div>
       </div>
       <div class="form-row">
         <div><label class="form-lbl">City</label><input class="form-input" id="f-city" type="text" placeholder="e.g. Pune"/></div>
@@ -474,12 +474,12 @@ h1,h2,h3,h4{font-family:'Manrope',sans-serif}
     <div class="modal-body">
       <div class="form-section">Basic Info</div>
       <div class="form-row">
-        <div><label class="form-lbl">Company Name *</label><input class="form-input" id="c-company" type="text" placeholder="e.g. Tata Steel"/></div>
-        <div><label class="form-lbl">Contact Person *</label><input class="form-input" id="c-person" type="text" placeholder="e.g. Suresh Mehta"/></div>
+        <div><label class="form-lbl">Company Name *</label><input class="form-input" id="c-company" type="text" placeholder="ABC Company"/></div>
+        <div><label class="form-lbl">Contact Person *</label><input class="form-input" id="c-person" type="text" placeholder="Mr. ABC"/></div>
       </div>
       <div class="form-row">
         <div><label class="form-lbl">Phone</label><input class="form-input" id="c-phone" type="tel" placeholder="+91 98765 43210"/></div>
-        <div><label class="form-lbl">Email</label><input class="form-input" id="c-email" type="email" placeholder="suresh@tatasteel.com"/></div>
+        <div><label class="form-lbl">Email</label><input class="form-input" id="c-email" type="email" placeholder="abc@abc.com"/></div>
       </div>
       <div class="form-section">Location</div>
       <div class="form-row">
@@ -524,7 +524,8 @@ h1,h2,h3,h4{font-family:'Manrope',sans-serif}
       <div id="cd-enquiries"></div>
     </div>
     <div class="modal-footer">
-      <button class="btn-cancel" onclick="openEditContactModal()">Edit Contact</button>
+      <button onclick="confirmDeleteContact()" style="background:none;border:none;cursor:pointer;color:var(--red);font-size:.82rem;font-weight:600;display:flex;align-items:center;gap:4px;padding:10px 14px;border-radius:10px;font-family:Inter,sans-serif;margin-right:auto" onmouseover="this.style.background='var(--red-bg)'" onmouseout="this.style.background='none'"><i class="mi" style="font-size:15px">delete</i>Delete Contact</button>
+      <button class="btn-cancel" onclick="openEditContactModal()">Edit</button>
       <button class="btn-primary" onclick="document.getElementById('contact-detail-modal').classList.remove('open')">Close</button>
     </div>
   </div>
@@ -561,6 +562,23 @@ h1,h2,h3,h4{font-family:'Manrope',sans-serif}
     <div class="modal-footer">
       <button class="btn-cancel" onclick="document.getElementById('delete-modal').classList.remove('open')">Cancel</button>
       <button onclick="deleteEnquiry()" style="background:var(--red);color:#fff;border:none;cursor:pointer;padding:10px 20px;border-radius:12px;font-family:Manrope,sans-serif;font-weight:700;font-size:.82rem">Yes, Delete</button>
+    </div>
+  </div>
+</div>
+
+<!-- DELETE CONTACT CONFIRM -->
+<div class="modal-overlay" id="delete-contact-modal">
+  <div class="modal-box sm">
+    <div class="modal-header">
+      <div><div class="modal-title" style="color:var(--red)">Delete Contact</div><div class="modal-sub">This cannot be undone.</div></div>
+      <button class="modal-close" onclick="document.getElementById('delete-contact-modal').classList.remove('open')"><i class="mi" style="font-size:18px">close</i></button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:.88rem;color:var(--muted);line-height:1.6">Permanently delete <strong id="delete-contact-name" style="color:var(--text)"></strong> from your contacts database? This will not delete any linked enquiries.</p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="document.getElementById('delete-contact-modal').classList.remove('open')">Cancel</button>
+      <button onclick="deleteContact()" style="background:var(--red);color:#fff;border:none;cursor:pointer;padding:10px 20px;border-radius:12px;font-family:Manrope,sans-serif;font-weight:700;font-size:.82rem">Yes, Delete</button>
     </div>
   </div>
 </div>
@@ -995,7 +1013,25 @@ async function submitInteraction(){
   showToast('Interaction logged');
 }
 
-// ── DELETE ────────────────────────────────────────────────
+// ── DELETE CONTACT ────────────────────────────────────────
+function confirmDeleteContact(){
+  const c=contacts.find(x=>x.id===activeContactId);if(!c)return;
+  document.getElementById('delete-contact-modal').classList.remove('open'); // close detail first
+  document.getElementById('contact-detail-modal').classList.remove('open');
+  document.getElementById('delete-contact-name').textContent=c.company_name+' ('+c.contact_person+')';
+  document.getElementById('delete-contact-modal').classList.add('open');
+}
+async function deleteContact(){
+  document.getElementById('delete-contact-modal').classList.remove('open');
+  showToast('Deleting contact…');
+  const{error}=await sb.from('contacts').delete().eq('id',activeContactId);
+  if(error){showToast('Delete failed: '+error.message);return;}
+  showToast('Contact deleted');
+  await loadAll();
+  showPage('contacts');
+}
+
+// ── DELETE ENQUIRY ────────────────────────────────────────
 function confirmDelete(){const e=enquiries.find(x=>x.id===activeId);if(!e)return;document.getElementById('delete-company-name').textContent=e.company;document.getElementById('delete-modal').classList.add('open');}
 async function deleteEnquiry(){document.getElementById('delete-modal').classList.remove('open');showToast('Deleting…');await sb.from('enquiries').delete().eq('id',activeId);showToast('Enquiry deleted');await loadAll();showPage('dashboard');}
 
