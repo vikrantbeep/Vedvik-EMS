@@ -680,10 +680,10 @@ function setLoading(on){document.getElementById('loading').className=on?'on':'';
 // ── FETCH ─────────────────────────────────────────────────
 async function loadAll(){
   setLoading(true);
-  const [er,cr,fr]=await Promise.all([
-  const resE = await sb.from('enquiries').select('*,interactions(*)').limit(2000);
-  const resC = await sb.from('contacts').select('*').limit(2000);
-  const resF = await sb.from('contact_followups').select('*').limit(2000);
+const [er,cr,fr]=await Promise.all([
+    sb.from('enquiries').select('*,interactions(*),notes(*)').order('created_at',{ascending:false}).limit(2000),
+    sb.from('contacts').select('*').order('created_at',{ascending:false}).limit(2000),
+    sb.from('contact_followups').select('*').order('followup_date',{ascending:false}).limit(2000)
   ]);
   setLoading(false);
   if(er.error||cr.error){showToast('Error loading data');return;}
