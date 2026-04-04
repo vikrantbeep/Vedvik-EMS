@@ -681,9 +681,9 @@ function setLoading(on){document.getElementById('loading').className=on?'on':'';
 async function loadAll(){
   setLoading(true);
   const [er,cr,fr]=await Promise.all([
-  const resE = await sb.from('enquiries').select('*,interactions(*)').limit(5000);
-  const resC = await sb.from('contacts').select('*').limit(5000);
-  const resF = await sb.from('contact_followups').select('*').limit(5000);
+  const resE = await sb.from('enquiries').select('*,interactions(*)').limit(2000);
+  const resC = await sb.from('contacts').select('*').limit(2000);
+  const resF = await sb.from('contact_followups').select('*').limit(2000);
   ]);
   setLoading(false);
   if(er.error||cr.error){showToast('Error loading data');return;}
