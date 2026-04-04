@@ -1153,19 +1153,21 @@ async function submitContact(){
   const fuDate=document.getElementById('c-fudate').value;
   const fuType=document.getElementById('c-futype').value;
   const fuComment=document.getElementById('c-fucomment').value.trim();
+
+  // Capture BEFORE closeContactModal resets it to null
+  const isEditing=editingContactId;
+  const editId=editingContactId;
+
   closeContactModal();showToast('Saving…');
 
-  if(editingContactId){
-    // ── FIX: UPDATE existing contact, not insert ──
-    const{error}=await sb.from('contacts').update(payload).eq('id',editingContactId);
+  if(isEditing){
+    const{error}=await sb.from('contacts').update(payload).eq('id',editId);
     if(error){showToast('Error: '+error.message);return;}
-    // Add new follow-up if date was entered
-    if(fuDate)await sb.from('contact_followups').insert({contact_id:editingContactId,followup_date:fuDate,followup_type:fuType,comments:fuComment||null,active:true});
+    if(fuDate)await sb.from('contact_followups').insert({contact_id:editId,followup_date:fuDate,followup_type:fuType,comments:fuComment||null,active:true});
     showToast('Contact updated ✓');
   }else{
     const{data:ins,error}=await sb.from('contacts').insert(payload).select().single();
     if(error){showToast('Error: '+error.message);return;}
-    // Save follow-up if provided
     if(fuDate&&ins)await sb.from('contact_followups').insert({contact_id:ins.id,followup_date:fuDate,followup_type:fuType,comments:fuComment||null,active:true});
     showToast('Contact saved ✓');
   }
