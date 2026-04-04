@@ -929,7 +929,10 @@ function renderContacts(){
       </div>
       ${fuHtml}
       <div class="cc-footer">
-        <span class="cc-enq-count">${linked.length} enquir${linked.length===1?'y':'ies'}</span>
+        <div style="display:flex;flex-direction:column;gap:4px">
+          ${c.industry?`<span style="font-size:.65rem;font-weight:600;background:var(--brand-light);color:var(--brand);padding:2px 8px;border-radius:20px;display:inline-block;width:fit-content">${c.industry}</span>`:''}
+          <span class="cc-enq-count">${linked.length} enquir${linked.length===1?'y':'ies'}</span>
+        </div>
         <div class="cc-actions">
           <button class="cc-btn" onclick="quickAddEnquiry(${c.id})"><i class="mi" style="font-size:13px">add_circle</i>Enquiry</button>
           <button class="cc-btn primary" onclick="openContactDetail(${c.id})"><i class="mi" style="font-size:13px">open_in_new</i>View</button>
