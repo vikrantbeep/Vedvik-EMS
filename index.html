@@ -364,7 +364,7 @@ h1,h2,h3,h4{font-family:'Manrope',sans-serif}
     </div>
     <div class="gsearch-wrap">
       <i class="mi">search</i>
-      <input class="gsearch-input" id="contact-search" placeholder="Search company, person, city, state…" oninput="renderContacts()" autocomplete="off"/>
+      <input class="gsearch-input" id="contact-search" placeholder="Search company, person, city, state, address, industry…" oninput="renderContacts()" autocomplete="off"/>
     </div>
     <div class="contacts-toolbar">
       <div class="contacts-tabs">
@@ -481,6 +481,9 @@ h1,h2,h3,h4{font-family:'Manrope',sans-serif}
         <div><label class="form-lbl">City</label><input class="form-input" id="f-city" type="text" placeholder="Ahmedabad"/></div>
         <div><label class="form-lbl">State</label><input class="form-input" id="f-state" type="text" placeholder="Gujarat"/></div>
       </div>
+      <div class="form-row single">
+        <div><label class="form-lbl">Address</label><input class="form-input" id="f-address" type="text" placeholder="Street, Area, PIN…"/></div>
+      </div>
       <div class="form-section">Enquiry Details</div>
       <div class="form-row">
         <div><label class="form-lbl">Product / Machine of Interest</label><input class="form-input" id="f-product" type="text" placeholder="Effytec"/></div>
@@ -524,6 +527,9 @@ h1,h2,h3,h4{font-family:'Manrope',sans-serif}
         <div><label class="form-lbl">City</label><input class="form-input" id="c-city" type="text" placeholder="Ahmedabad"/></div>
         <div><label class="form-lbl">State</label><input class="form-input" id="c-state" type="text" placeholder="Gujarat"/></div>
       </div>
+      <div class="form-row single">
+        <div><label class="form-lbl">Address</label><input class="form-input" id="c-address" type="text" placeholder="Street, Area, PIN…"/></div>
+      </div>
       <div class="form-section">Business Info</div>
       <div class="form-row">
         <div><label class="form-lbl">Industry Type</label><input class="form-input" id="c-industry" type="text" placeholder="e.g. Pharmaceuticals"/></div>
@@ -563,6 +569,7 @@ h1,h2,h3,h4{font-family:'Manrope',sans-serif}
         <div class="contact-item"><div class="contact-icon"><i class="mi" style="font-size:17px">mail</i></div><div><div class="contact-lbl">Email</div><div class="contact-val" id="cd-email">—</div></div></div>
         <div class="contact-item"><div class="contact-icon"><i class="mi" style="font-size:17px">location_on</i></div><div><div class="contact-lbl">Location</div><div class="contact-val" id="cd-location">—</div></div></div>
         <div class="contact-item"><div class="contact-icon"><i class="mi" style="font-size:17px">person</i></div><div><div class="contact-lbl">Assigned To</div><div class="contact-val" id="cd-assigned">—</div></div></div>
+        <div class="contact-item" id="cd-address-wrap" style="grid-column:1/-1"><div class="contact-icon"><i class="mi" style="font-size:17px">home</i></div><div><div class="contact-lbl">Address</div><div class="contact-val" id="cd-address">—</div></div></div>
       </div>
       <div id="cd-notes-wrap" style="margin-bottom:16px"></div>
       <!-- Follow-ups section -->
@@ -680,16 +687,16 @@ function setLoading(on){document.getElementById('loading').className=on?'on':'';
 // ── FETCH ─────────────────────────────────────────────────
 async function loadAll(){
   setLoading(true);
-const [er,cr,fr]=await Promise.all([
-    sb.from('enquiries').select('*,interactions(*),notes(*)').order('created_at',{ascending:false}).limit(2000),
-    sb.from('contacts').select('*').order('created_at',{ascending:false}).limit(2000),
-    sb.from('contact_followups').select('*').order('followup_date',{ascending:false}).limit(2000)
+  const [er,cr,fr]=await Promise.all([
+    sb.from('enquiries').select('*,interactions(*),notes(*)').order('created_at',{ascending:false}),
+    sb.from('contacts').select('*').order('created_at',{ascending:false}),
+    sb.from('contact_followups').select('*').order('followup_date',{ascending:false})
   ]);
   setLoading(false);
   if(er.error||cr.error){showToast('Error loading data');return;}
   enquiries=er.data.map(r=>({
     id:r.id,company:r.company,contact:r.contact,phone:r.phone||'',email:r.email||'',
-    city:r.city||'',state:r.state||'',source:r.source||'',product:r.product||'',
+    city:r.city||'',state:r.state||'',address:r.address||'',source:r.source||'',product:r.product||'',
     stage:r.stage,assignee:r.assignee||'Vikrant',followup:r.followup||'',
     quoteSent:r.quote_sent,active:r.active!==false,contact_id:r.contact_id||null,
     notes:(r.notes||[]).sort((a,b)=>new Date(a.created_at)-new Date(b.created_at)).map(n=>n.content),
@@ -876,7 +883,7 @@ function renderContacts(){
   if(contactTab!=='all')rows=rows.filter(c=>(c.assigned_to||'General')===contactTab);
 
   // Search filter
-  if(ql)rows=rows.filter(c=>[c.company_name,c.contact_person,c.city,c.state,c.industry].join(' ').toLowerCase().includes(ql));
+  if(ql)rows=rows.filter(c=>[c.company_name,c.contact_person,c.city,c.state,c.address,c.industry].join(' ').toLowerCase().includes(ql));
 
   // Sorting
   rows=[...rows].sort((a,b)=>{
@@ -924,7 +931,7 @@ function renderContacts(){
 
     return `<div class="${cardClass}">
       <div class="cc-header">
-        <div><div class="cc-company">${c.company_name}${hasDup?'':''}</div><div class="cc-person">${c.contact_person}</div><div class="cc-meta">${[c.city,c.state].filter(Boolean).join(', ')||'No location'} ${assigned!=='General'?'· '+assigned:''}</div></div>
+        <div><div class="cc-company">${c.company_name}${hasDup?'':''}</div><div class="cc-person">${c.contact_person}</div><div class="cc-meta">${[c.city,c.state].filter(Boolean).join(', ')||'No location'} ${assigned!=='General'?'· '+assigned:''}</div>${c.address?`<div class="cc-meta" style="margin-top:2px;font-size:.68rem"><i class="mi" style="font-size:12px;vertical-align:middle">home</i> ${c.address}</div>`:''}</div>
         ${hasDup?'<span class="dup-badge">⚠ Duplicate</span>':''}
       </div>
       ${fuHtml}
@@ -956,6 +963,7 @@ function quickAddEnquiry(contactId){
   document.getElementById('f-email').value=c.email||'';
   document.getElementById('f-city').value=c.city||'';
   document.getElementById('f-state').value=c.state||'';
+  document.getElementById('f-address').value=c.address||'';
   // Assign to same salesperson
   const assigned=c.assigned_to||'Vikrant';
   if(assigned!=='General')document.getElementById('f-assignee').value=assigned;
@@ -974,6 +982,9 @@ function openContactDetail(id){
   document.getElementById('cd-email').textContent=c.email||'—';
   document.getElementById('cd-location').textContent=[c.city,c.state].filter(Boolean).join(', ')||'—';
   document.getElementById('cd-assigned').textContent=c.assigned_to||'General';
+  const addrEl=document.getElementById('cd-address');
+  addrEl.textContent=c.address||'—';
+  document.getElementById('cd-address-wrap').style.display=c.address?'flex':'none';
   document.getElementById('cd-notes-wrap').innerHTML=c.notes?`<div class="note-item">"${c.notes}"</div>`:'';
 
   // Follow-ups
@@ -1047,6 +1058,7 @@ function openEditContactModal(){
   document.getElementById('c-email').value=c.email||'';
   document.getElementById('c-city').value=c.city||'';
   document.getElementById('c-state').value=c.state||'';
+  document.getElementById('c-address').value=c.address||'';
   document.getElementById('c-industry').value=c.industry||'';
   document.getElementById('c-assigned').value=c.assigned_to||'General';
   document.getElementById('c-source').value=c.source||'Trade Show';
@@ -1065,7 +1077,7 @@ function openDetail(id){
   document.getElementById('detail-bc').textContent=e.company;
   document.getElementById('d-company').textContent=e.company;
   document.getElementById('d-product').textContent=e.product||'No product specified';
-  document.getElementById('d-location').textContent=[e.city,e.state].filter(Boolean).join(', ')||'';
+  document.getElementById('d-location').textContent=[[e.city,e.state].filter(Boolean).join(', '),e.address].filter(Boolean).join(' — ')||'';
   document.getElementById('d-contact').textContent=e.contact;
   document.getElementById('d-phone').textContent=e.phone||'—';
   document.getElementById('d-email').textContent=e.email||'—';
@@ -1100,16 +1112,16 @@ async function addNote(){const inp=document.getElementById('note-input');const c
 
 // ── ENQUIRY MODAL ─────────────────────────────────────────
 function openEnqModal(){editingEnqId=null;document._quickAddContactId=null;document.getElementById('enq-modal-title').textContent='New Sales Enquiry';document.getElementById('enq-submit-btn').textContent='Create Enquiry';clearEnqForm();document.getElementById('enq-modal').classList.add('open');}
-function openEditEnqModal(){const e=enquiries.find(x=>x.id===activeId);if(!e)return;editingEnqId=e.id;document._quickAddContactId=null;document.getElementById('enq-modal-title').textContent='Edit Enquiry';document.getElementById('enq-submit-btn').textContent='Save Changes';document.getElementById('f-name').value=e.contact;document.getElementById('f-company').value=e.company;document.getElementById('f-phone').value=e.phone||'';document.getElementById('f-email').value=e.email||'';document.getElementById('f-city').value=e.city||'';document.getElementById('f-state').value=e.state||'';document.getElementById('f-product').value=e.product||'';document.getElementById('f-source').value=e.source||'Trade Show';document.getElementById('f-assignee').value=e.assignee;document.getElementById('f-followup').value=e.followup||'';document.getElementById('f-notes').value='';document.getElementById('enq-modal').classList.add('open');}
+function openEditEnqModal(){const e=enquiries.find(x=>x.id===activeId);if(!e)return;editingEnqId=e.id;document._quickAddContactId=null;document.getElementById('enq-modal-title').textContent='Edit Enquiry';document.getElementById('enq-submit-btn').textContent='Save Changes';document.getElementById('f-name').value=e.contact;document.getElementById('f-company').value=e.company;document.getElementById('f-phone').value=e.phone||'';document.getElementById('f-email').value=e.email||'';document.getElementById('f-city').value=e.city||'';document.getElementById('f-state').value=e.state||'';document.getElementById('f-address').value=e.address||'';document.getElementById('f-product').value=e.product||'';document.getElementById('f-source').value=e.source||'Trade Show';document.getElementById('f-assignee').value=e.assignee;document.getElementById('f-followup').value=e.followup||'';document.getElementById('f-notes').value='';document.getElementById('enq-modal').classList.add('open');}
 function closeEnqModal(){document.getElementById('enq-modal').classList.remove('open');clearEnqForm();editingEnqId=null;document._quickAddContactId=null;}
-function clearEnqForm(){['f-name','f-company','f-phone','f-email','f-city','f-state','f-product','f-notes','f-followup'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});}
+function clearEnqForm(){['f-name','f-company','f-phone','f-email','f-city','f-state','f-address','f-product','f-notes','f-followup'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});}
 
 async function submitEnquiry(){
   const contact=document.getElementById('f-name').value.trim();
   const company=document.getElementById('f-company').value.trim();
   if(!contact||!company){showToast('Name and Company are required');return;}
   const noteText=document.getElementById('f-notes').value.trim();
-  const payload={company,contact,phone:document.getElementById('f-phone').value.trim()||null,email:document.getElementById('f-email').value.trim()||null,city:document.getElementById('f-city').value.trim()||null,state:document.getElementById('f-state').value.trim()||null,product:document.getElementById('f-product').value.trim()||null,source:document.getElementById('f-source').value,assignee:document.getElementById('f-assignee').value,followup:document.getElementById('f-followup').value||null};
+  const payload={company,contact,phone:document.getElementById('f-phone').value.trim()||null,email:document.getElementById('f-email').value.trim()||null,city:document.getElementById('f-city').value.trim()||null,state:document.getElementById('f-state').value.trim()||null,address:document.getElementById('f-address').value.trim()||null,product:document.getElementById('f-product').value.trim()||null,source:document.getElementById('f-source').value,assignee:document.getElementById('f-assignee').value,followup:document.getElementById('f-followup').value||null};
   // Link contact if quick-adding
   if(document._quickAddContactId)payload.contact_id=document._quickAddContactId;
   closeEnqModal();showToast('Saving…');
@@ -1120,7 +1132,31 @@ async function submitEnquiry(){
     const{data:ins,error}=await sb.from('enquiries').insert(payload).select().single();
     if(error){showToast('Error: '+error.message);return;}
     if(noteText&&ins)await sb.from('notes').insert({enquiry_id:ins.id,content:noteText});
-    showToast('Enquiry created ✓');
+    // ── AUTO-CREATE CONTACT if no match on phone/email ─────
+    if(!document._quickAddContactId){
+      const phone=(payload.phone||'').trim().replace(/\s/g,'');
+      const email=(payload.email||'').trim().toLowerCase();
+      const matchExists=contacts.some(x=>{
+        const xp=(x.phone||'').trim().replace(/\s/g,'');
+        const xe=(x.email||'').trim().toLowerCase();
+        return (phone&&xp&&phone===xp)||(email&&xe&&email===xe);
+      });
+      if(!matchExists){
+        const cPayload={company_name:company,contact_person:contact,phone:payload.phone||null,email:payload.email||null,city:payload.city||null,state:payload.state||null,address:payload.address||null,assigned_to:payload.assignee,source:payload.source};
+        const{data:newContact,error:cErr}=await sb.from('contacts').insert(cPayload).select().single();
+        if(!cErr&&newContact){
+          // Link the enquiry to the new contact
+          await sb.from('enquiries').update({contact_id:newContact.id}).eq('id',ins.id);
+          showToast(`✅ Contact "${contact}" (${company}) auto-created`,'success',5000);
+        }else{
+          showToast('Enquiry created ✓');
+        }
+      }else{
+        showToast('Enquiry created ✓');
+      }
+    }else{
+      showToast('Enquiry created ✓');
+    }
   }
   await loadAll();
 }
@@ -1130,7 +1166,7 @@ function openContactModal(){
   editingContactId=null;
   document.getElementById('contact-modal-title').textContent='Add Contact';
   document.getElementById('contact-submit-btn').textContent='Save Contact';
-  ['c-company','c-person','c-phone','c-email','c-city','c-state','c-industry','c-products','c-notes','c-fudate','c-fucomment'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  ['c-company','c-person','c-phone','c-email','c-city','c-state','c-address','c-industry','c-products','c-notes','c-fudate','c-fucomment'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
   document.getElementById('c-assigned').value='General';
   document.getElementById('dup-warning').className='dup-warning';
   document.getElementById('contact-modal').classList.add('open');
@@ -1147,6 +1183,7 @@ async function submitContact(){
     email:document.getElementById('c-email').value.trim()||null,
     city:document.getElementById('c-city').value.trim()||null,
     state:document.getElementById('c-state').value.trim()||null,
+    address:document.getElementById('c-address').value.trim()||null,
     industry:document.getElementById('c-industry').value.trim()||null,
     assigned_to:document.getElementById('c-assigned').value,
     source:document.getElementById('c-source').value,
@@ -1212,7 +1249,7 @@ async function deleteContact(){
 
 // ── MISC ──────────────────────────────────────────────────
 function showFollowupAlert(){const due=enquiries.filter(e=>e.followup===todayStr());showToast(due.length?`${due.length} follow-up(s) today: ${due.map(e=>e.company).join(', ')}`:'No follow-ups due today');}
-function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');clearTimeout(window._tt);window._tt=setTimeout(()=>t.classList.remove('show'),3000);}
+function showToast(msg,type='info',duration=3000){const t=document.getElementById('toast');t.textContent=msg;t.className='show';t.style.background=type==='success'?'var(--green)':type==='error'?'var(--red)':'var(--brand)';clearTimeout(window._tt);window._tt=setTimeout(()=>t.classList.remove('show'),duration);}
 
 // ── INIT ──────────────────────────────────────────────────
 initAuth();
